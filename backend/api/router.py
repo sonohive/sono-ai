@@ -9,6 +9,7 @@ from api.auth import router as auth_router
 from api.chat import router as chat_router
 from api.dashboard import router as dashboard_router
 from api.admin import router as admin_router
+from api.saved_responses import router as saved_responses_router
 
 router = APIRouter()
 
@@ -16,6 +17,7 @@ router.include_router(auth_router, prefix="/auth", tags=["auth"])
 router.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
 router.include_router(admin_router, prefix="/admin", tags=["admin"])
 router.include_router(chat_router, prefix="/chat", tags=["chat"])
+router.include_router(saved_responses_router, prefix="/saved-responses", tags=["saved_responses"])
 
 @router.get("/health")
 async def health_check(

@@ -2696,3 +2696,70 @@ a.sonoai-source-pill:hover .sonoai-country-badge {
     border-color: #ddd !important;
     color: #111 !important;
 }
+
+/* Toast */
+.sonoai-toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2ecc9a;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    animation: slideUpFade 0.3s ease-out;
+}
+
+@keyframes slideUpFade {
+    from { opacity: 0; transform: translate(-50%, 20px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Saved Item Enhancements */
+.sonoai-saved-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.sonoai-saved-mode-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+}
+
+.sonoai-saved-mode-label.mode-guideline {
+    background-color: rgba(46, 204, 154, 0.15);
+    color: #2ecc9a;
+}
+
+.sonoai-saved-mode-label.mode-research {
+    background-color: rgba(74, 144, 226, 0.15);
+    color: #4a90e2;
+}
+
+.sonoai-saved-delete-btn {
+    background: transparent;
+    border: none;
+    color: #8b8b93;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.sonoai-saved-delete-btn:hover {
+    color: #ff4d4d;
+    background: rgba(255, 77, 77, 0.1);
+}

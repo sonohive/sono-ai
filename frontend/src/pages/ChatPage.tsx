@@ -16,6 +16,8 @@ export default function ChatPage() {
   const [mode, setMode] = useState<'guideline' | 'research'>('guideline');
   const [isSavedPanelOpen, setIsSavedPanelOpen] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [savedResponses, setSavedResponses] = useState<any[]>([]);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -25,6 +27,51 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const fetchSavedResponses = async () => {
+    try {
+      const res = await fetch('/api/saved-responses');
+      if (res.ok) {
+        const data = await res.json();
+        setSavedResponses(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch saved responses', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchSavedResponses();
+  }, []);
+
+  const handleSaveResponse = async (index: number) => {
+    // Find the current assistant message and the user message immediately preceding it
+    const answerMsg = messages[index];
+    const questionMsg = messages[index - 1];
+
+    if (!answerMsg || !questionMsg || !currentSessionId) return;
+
+    try {
+      const res = await fetch('/api/saved-responses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: currentSessionId,
+          question: questionMsg.content,
+          answer: answerMsg.content,
+        })
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setSavedResponses(prev => [data, ...prev]);
+        setToastMessage("Response bookmarked successfully!");
+        setTimeout(() => setToastMessage(null), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to save response', err);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,7 +222,7 @@ export default function ChatPage() {
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                           <span>Copy</span>
                         </button>
-                        <button className="sonoai-save-msg-btn" title="Save">
+                        <button className="sonoai-save-msg-btn" title="Save" onClick={() => handleSaveResponse(messages.findIndex(m => m.id === message.id))}>
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                           <span>Save</span>
                         </button>
@@ -241,12 +288,23 @@ export default function ChatPage() {
         </div>
         </div>
         
-        <p className="sonoai-disclaimer">
-          By messaging Sono AI - an AI Chatbot, you agree to our <a href="#">Terms of Use</a> and have read our <a href="#">Privacy Policy</a>.
-        </p>
+        <div className="sonoai-disclaimer">
+          By messaging Sono AI - an AI Chatbot, you agree to our Terms of Use and have read our Privacy Policy.
+        </div>
       </main>
-      
-      <SavedPanel isOpen={isSavedPanelOpen} onClose={() => setIsSavedPanelOpen(false)} />
+
+      <SavedPanel 
+        isOpen={isSavedPanelOpen} 
+        onClose={() => setIsSavedPanelOpen(false)} 
+        savedResponses={savedResponses}
+        setSavedResponses={setSavedResponses}
+      />
+
+      {toastMessage && (
+        <div className="sonoai-toast">
+          {toastMessage}
+        </div>
+      )}
     </div>
   );
 }
