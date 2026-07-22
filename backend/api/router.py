@@ -6,10 +6,16 @@ import redis.asyncio as redis
 from db.session import get_db
 from db.redis import get_redis
 from api.auth import router as auth_router
+from api.chat import router as chat_router
+from api.dashboard import router as dashboard_router
+from api.admin import router as admin_router
 
 router = APIRouter()
 
-router.include_router(auth_router, prefix="/auth", tags=["authentication"])
+router.include_router(auth_router, prefix="/auth", tags=["auth"])
+router.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
+router.include_router(admin_router, prefix="/admin", tags=["admin"])
+router.include_router(chat_router, prefix="/chat", tags=["chat"])
 
 @router.get("/health")
 async def health_check(
