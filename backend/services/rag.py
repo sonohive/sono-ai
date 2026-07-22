@@ -11,11 +11,37 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 from core.config import settings
 from services.agent_memory import get_chat_history
 
+from langchain_core.retrievers import BaseRetriever
+from langchain_core.callbacks import CallbackManagerForRetrieverRun
+from langchain_core.documents import Document
+from sqlalchemy.future import select
+from db.session import AsyncSessionLocal
+from models.domain import KnowledgeBaseEmbedding
+
+class PGVectorFallbackRetriever(BaseRetriever):
+    embeddings: object
+
+    def _get_relevant_documents(self, query: str, *, run_manager: CallbackManagerForRetrieverRun) -> list[Document]:
+        raise NotImplementedError("This retriever only supports async operations.")
+
+    async def _aget_relevant_documents(self, query: str, *, run_manager: CallbackManagerForRetrieverRun) -> list[Document]:
+        # Generate embedding for the search query
+        query_vector = await self.embeddings.aembed_query(query)
+        async with AsyncSessionLocal() as db:
+            # pgvector cosine distance operator is used for order_by
+            result = await db.execute(
+                select(KnowledgeBaseEmbedding)
+                .order_by(KnowledgeBaseEmbedding.embedding.cosine_distance(query_vector))
+                .limit(5)
+            )
+            docs = result.scalars().all()
+            return [Document(page_content=doc.chunk_text, metadata={}) for doc in docs]
+
 class RAGService:
     def __init__(self, index_name: str = "sonoai_index"):
         # Setup Embeddings
         self.embeddings = OpenAIEmbeddings(
-            model=settings.EMBEDDING_MODEL,
+            model="text-embedding-3-large",
             openai_api_key=settings.OPENAI_API_KEY
         )
         
@@ -50,9 +76,13 @@ class RAGService:
         ])
         
         # Create retriever from vector store
-        retriever = self.vector_store.as_retriever(
+        redis_retriever = self.vector_store.as_retriever(
             search_kwargs={"k": 5}
         )
+        
+        # Setup Fallback
+        pg_fallback = PGVectorFallbackRetriever(embeddings=self.embeddings)
+        retriever = redis_retriever.with_fallbacks([pg_fallback])
         
         history_aware_retriever = create_history_aware_retriever(
             self.llm, retriever, contextualize_q_prompt

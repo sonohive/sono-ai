@@ -10,16 +10,13 @@ rag_service = RAGService()
 
 @router.post("/stream")
 async def stream_chat(
-    request: ChatRequest,
-    current_user: User = Depends(get_current_user)
+    request: ChatRequest
 ):
     """
     Stream chat response using Server-Sent Events (SSE).
-    Only accessible by authenticated users.
     """
-    # Ensure the session_id belongs to the user in a real app.
-    # For now, we namespace the session_id with the user id to prevent collisions.
-    user_session_id = f"user:{current_user.id}:session:{request.session_id}"
+    # For now, we namespace the session_id to prevent collisions.
+    user_session_id = f"user:guest:session:{request.session_id}"
 
     async def event_generator():
         try:

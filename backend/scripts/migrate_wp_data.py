@@ -10,7 +10,8 @@ load_dotenv()
 
 from db.session import AsyncSessionLocal, engine
 from models.user import User, Base
-from models.domain import Topic, KnowledgeBaseMetadata, QueryLog, SavedResponse
+from models.domain import Topic, KnowledgeBaseMetadata, QueryLog, SavedResponse, KnowledgeBaseEmbedding
+import json
 
 async def migrate_users(mysql_conn):
     print("Migrating Users...")
@@ -76,20 +77,61 @@ async def migrate_custom_tables(mysql_conn):
         print(f"Successfully migrated {len(wp_topics)} Topics and {len(wp_kb)} Knowledge Base Items.")
 
 async def migrate_embeddings(mysql_conn):
-    print("Migrating Embeddings and Chunk Text to Redis...")
-    # This requires the LangChain Redis VectorStore setup we built in Phase 3
-    # For now, we will extract the chunks from MySQL so you have them safely.
+    print("Migrating Embeddings and Chunk Text to Postgres (pgvector)...")
     
     with mysql_conn.cursor() as cursor:
         cursor.execute("SELECT id, knowledge_id, chunk_text, embedding FROM sa_sonoai_embeddings")
         wp_embeddings = cursor.fetchall()
         
     print(f"Found {len(wp_embeddings)} embedded chunks in MySQL.")
-    # In a full migration, you would initialize your LangChain Redis instance here
-    # and use `vectorstore.add_texts(texts=[e['chunk_text']], metadatas=[{'knowledge_id': e['knowledge_id']}])`
-    # Or, if you want to preserve the EXACT vectors from MySQL without re-embedding:
-    # you would need to write directly to the Redis hashes formatting them as LangChain expects.
-    print("Chunks extracted. Ready to be pushed to Redis VectorStore!")
+    
+    async with AsyncSessionLocal() as db:
+        success_count = 0
+        error_count = 0
+        for chunk in wp_embeddings:
+            embedding_data = chunk['embedding']
+            
+            # PyMySQL might return bytes for JSON/TEXT columns
+            if isinstance(embedding_data, bytes):
+                embedding_data = embedding_data.decode('utf-8')
+                
+            if isinstance(embedding_data, str):
+                try:
+                    embedding_vector = json.loads(embedding_data)
+                except Exception as e:
+                    if error_count == 0: print(f"DEBUG Parse error: {e}, Data: {embedding_data[:100]}")
+                    error_count += 1
+                    continue # Skip if parsing fails
+            else:
+                embedding_vector = embedding_data
+            
+            # Skip if it's not a valid list
+            if not isinstance(embedding_vector, list):
+                if error_count == 0: print(f"DEBUG Not a list: Type is {type(embedding_vector)}")
+                error_count += 1
+                continue
+                
+            # Verify the dimension is exactly 3072
+            if len(embedding_vector) != 3072:
+                if error_count == 0: print(f"DEBUG Wrong dimension: {len(embedding_vector)}")
+                error_count += 1
+                continue
+                
+            new_embedding = KnowledgeBaseEmbedding(
+                chunk_text=chunk['chunk_text'],
+                embedding=embedding_vector
+            )
+            db.add(new_embedding)
+            
+            try:
+                await db.commit()
+                success_count += 1
+            except Exception as e:
+                await db.rollback()
+                error_count += 1
+                print(f"Error inserting chunk: {e}")
+                
+    print(f"Migration complete! Inserted {success_count} chunks. Skipped {error_count} due to errors/dimensions.")
 
 async def main():
     wp_db_host = os.getenv("WP_DB_HOST", "localhost")
@@ -111,12 +153,17 @@ async def main():
         print("Make sure you added the WP_DB_* credentials to backend/.env!")
         return
 
-    # Ensure Postgres tables exist
+    # Ensure Postgres tables and extensions exist
+    from sqlalchemy import text
     async with engine.begin() as conn:
+        # Create the pgvector extension automatically
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        # Drop the old table so it recreates with the correct dimensions
+        await conn.execute(text("DROP TABLE IF EXISTS kb_embeddings CASCADE"))
         await conn.run_sync(Base.metadata.create_all)
         
-    await migrate_users(mysql_conn)
-    await migrate_custom_tables(mysql_conn)
+    # await migrate_users(mysql_conn)
+    # await migrate_custom_tables(mysql_conn)
     await migrate_embeddings(mysql_conn)
     
     mysql_conn.close()
