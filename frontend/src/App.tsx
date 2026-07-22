@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import ChatPage from './pages/ChatPage';
 import Dashboard from './pages/Dashboard';
-import KnowledgeBase from './pages/Admin/KnowledgeBase';
 
 function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -37,7 +36,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                <a href="/" className="text-sm font-medium text-slate-600 hover:text-brand-700">Home</a>
                <a href="/chat" className="text-sm font-medium text-slate-600 hover:text-brand-700">Chat</a>
                <a href="/dashboard" className="text-sm font-medium text-slate-600 hover:text-brand-700">Dashboard</a>
-               <a href="/admin/kb" className="text-sm font-medium text-slate-600 hover:text-brand-700">Admin</a>
+               <a href="http://localhost:5174" className="text-sm font-medium text-slate-600 hover:text-brand-700">Admin</a>
             </div>
           </div>
         </div>
@@ -59,7 +58,6 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin/kb" element={<KnowledgeBase />} />
         </Routes>
       </Layout>
     </BrowserRouter>
