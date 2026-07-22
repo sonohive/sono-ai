@@ -191,21 +191,52 @@ export default function Users() {
             placeholder="Search by name or email..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-11 pr-4 py-2.5 bg-[#09090b] border border-white/10 hover:border-white/20 rounded-lg text-sm text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-slate-500"
+            className="w-full pl-11 pr-4 py-2.5 bg-[#09090b] border border-white/10 hover:border-white/20 rounded-lg text-sm text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-slate-500 font-sans"
           />
         </div>
         
-        <div className="flex gap-2">
-          <select 
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="bg-[#09090b] border border-white/10 hover:border-white/20 text-slate-300 text-sm rounded-lg focus:ring-1 focus:ring-primary/50 focus:border-primary/50 focus:outline-none block px-4 py-2.5 transition-all appearance-none cursor-pointer"
-            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3E%3Cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3E%3C/svg%3E")', backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
+        <div className="relative">
+          <button 
+            type="button"
+            onClick={() => {
+              const el = document.getElementById('status-dropdown-menu');
+              if (el) el.classList.toggle('hidden');
+            }}
+            onBlur={(e) => {
+              // Timeout to allow click on option to fire first
+              setTimeout(() => {
+                const el = document.getElementById('status-dropdown-menu');
+                if (el) el.classList.add('hidden');
+              }, 150);
+            }}
+            className="flex items-center justify-between w-40 bg-[#09090b] border border-white/10 hover:border-white/20 text-slate-300 text-sm rounded-lg focus:ring-1 focus:ring-primary/50 focus:border-primary/50 focus:outline-none px-4 py-2.5 transition-all cursor-pointer font-sans"
           >
-            <option value="all">All Statuses</option>
-            <option value="active">Active Only</option>
-            <option value="suspended">Suspended Only</option>
-          </select>
+            {statusFilter === 'all' ? 'All Statuses' : statusFilter === 'active' ? 'Active Only' : 'Suspended Only'}
+            <svg className="w-4 h-4 text-slate-400 ml-2" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 8l4 4 4-4" />
+            </svg>
+          </button>
+
+          <div id="status-dropdown-menu" className="absolute z-10 w-full mt-1 bg-[#09090b] border border-white/10 rounded-lg shadow-lg hidden overflow-hidden font-sans">
+            <div 
+              className={`px-4 py-2.5 text-sm cursor-pointer hover:bg-white/5 transition-colors ${statusFilter === 'all' ? 'text-white bg-white/5 font-medium' : 'text-slate-400'}`}
+              onClick={() => { setStatusFilter('all'); setPage(1); }}
+            >
+              All Statuses
+            </div>
+            <div 
+              className={`px-4 py-2.5 text-sm cursor-pointer hover:bg-white/5 transition-colors ${statusFilter === 'active' ? 'text-white bg-white/5 font-medium' : 'text-slate-400'}`}
+              onClick={() => { setStatusFilter('active'); setPage(1); }}
+            >
+              Active Only
+            </div>
+            <div 
+              className={`px-4 py-2.5 text-sm cursor-pointer hover:bg-white/5 transition-colors ${statusFilter === 'suspended' ? 'text-white bg-white/5 font-medium' : 'text-slate-400'}`}
+              onClick={() => { setStatusFilter('suspended'); setPage(1); }}
+            >
+              Suspended Only
+            </div>
+          </div>
         </div>
       </div>
 

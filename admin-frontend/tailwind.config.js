@@ -22,6 +22,9 @@ export default {
           950: '#230132',
         }
       },
+      fontFamily: {
+        sans: ['"IBM Plex Sans"', 'sans-serif'],
+      },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',
         'slide-up': 'slideUp 0.4s ease-out',
