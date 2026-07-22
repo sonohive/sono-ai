@@ -49,3 +49,12 @@ class KnowledgeBaseEmbedding(Base):
     chunk_text = Column(Text, nullable=False)
     embedding = Column(Vector(3072), nullable=False) # 3072 is OpenAI's text-embedding-3-large dimension
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class ChatSession(Base):
+    __tablename__ = "chat_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    mode = Column(String, nullable=False, default="guideline") # "guideline" or "research"
+    title = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

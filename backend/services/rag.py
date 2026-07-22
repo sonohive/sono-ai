@@ -45,12 +45,19 @@ class RAGService:
             openai_api_key=settings.OPENAI_API_KEY
         )
         
-        # Setup Vector Store
-        self.vector_store = Redis(
+        # Setup Vector Stores
+        self.guideline_vector_store = Redis(
             redis_url=settings.REDIS_URL,
             index_name=index_name,
             embedding=self.embeddings,
             key_prefix="sonoai:vss:guideline:"
+        )
+
+        self.research_vector_store = Redis(
+            redis_url=settings.REDIS_URL,
+            index_name=index_name,
+            embedding=self.embeddings,
+            key_prefix="sonoai:vss:research:"
         )
         
         # Setup LLM
@@ -61,11 +68,11 @@ class RAGService:
             streaming=True
         )
 
+        self.chains = {}
         self._setup_chains()
 
-    def _setup_chains(self):
+    def _create_chain_for_store(self, vector_store):
         # 1. History Aware Retriever
-        # Prompt to rephrase the question using chat history
         contextualize_q_prompt = ChatPromptTemplate.from_messages([
             ("system", "Given a chat history and the latest user question "
                        "which might reference context in the chat history, formulate a standalone question "
@@ -75,12 +82,10 @@ class RAGService:
             ("human", "{input}"),
         ])
         
-        # Create retriever from vector store
-        redis_retriever = self.vector_store.as_retriever(
+        redis_retriever = vector_store.as_retriever(
             search_kwargs={"k": 5}
         )
         
-        # Setup Fallback
         pg_fallback = PGVectorFallbackRetriever(embeddings=self.embeddings)
         retriever = redis_retriever.with_fallbacks([pg_fallback])
         
@@ -91,6 +96,7 @@ class RAGService:
         # 2. Answer Question Chain
         qa_prompt = ChatPromptTemplate.from_messages([
             ("system", "You are an educational AI assistant for the ultrasound and sonography niche. "
+                       "{mode_instructions}\n\n"
                        "Use the following pieces of retrieved context to answer the question. "
                        "If you don't know the answer, just say that you don't know. "
                        "Use clear, educational, and professional language.\n\n"
@@ -101,26 +107,37 @@ class RAGService:
         question_answer_chain = create_stuff_documents_chain(self.llm, qa_prompt)
         
         # 3. Retrieval Chain
-        self.rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
+        rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
         
         # 4. Add Memory
-        self.conversational_rag_chain = RunnableWithMessageHistory(
-            self.rag_chain,
+        return RunnableWithMessageHistory(
+            rag_chain,
             get_chat_history,
             input_messages_key="input",
             history_messages_key="chat_history",
             output_messages_key="answer",
         )
 
-    async def stream_chat(self, message: str, session_id: str) -> AsyncIterable[str]:
+    def _setup_chains(self):
+        self.chains["guideline"] = self._create_chain_for_store(self.guideline_vector_store)
+        self.chains["research"] = self._create_chain_for_store(self.research_vector_store)
+
+    async def stream_chat(self, message: str, session_id: str, mode: str = "guideline") -> AsyncIterable[str]:
         """
         Streams the response from the LLM back to the client.
         """
         config = {"configurable": {"session_id": session_id}}
         
+        mode_instructions = (
+            "You are in GUIDELINE MODE. You must strictly adhere to established medical protocols and guidelines provided in the context. Format your response with clear, structured citations including the Country of the guideline."
+            if mode == "guideline" else
+            "You are in RESEARCH MODE. You should incorporate peer-reviewed evidence from the context. Acknowledge clinical uncertainty where appropriate, and provide a broader perspective on the topic."
+        )
+
         # astream yields chunks of the final output dictionary
-        async for chunk in self.conversational_rag_chain.astream(
-            {"input": message},
+        selected_chain = self.chains.get(mode, self.chains["guideline"])
+        async for chunk in selected_chain.astream(
+            {"input": message, "mode_instructions": mode_instructions},
             config=config,
         ):
             if "answer" in chunk:
