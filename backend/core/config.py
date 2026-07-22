@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440 # 24 hours
     RESEND_API_KEY: str = ""
     
-    # Allows loading from .env file
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    # Allows loading from .env file and ignores extra variables
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()
