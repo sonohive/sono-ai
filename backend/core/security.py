@@ -1,31 +1,39 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union
 import jwt
+import bcrypt
 from passlib.context import CryptContext
 from core.config import settings
 
-# Configure passlib to use bcrypt and optionally support legacy WordPress phpass
+# Configure passlib ONLY for legacy WordPress phpass
 pwd_context = CryptContext(
-    schemes=["bcrypt", "phpass"], 
-    deprecated=["phpass"],
-    bcrypt__rounds=12
+    schemes=["phpass"], 
 )
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    salt = bcrypt.gensalt(rounds=12)
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify the password against the hash.
     If the hash is a deprecated phpass, passlib handles it.
+    Otherwise, we use the modern bcrypt library directly.
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    if hashed_password.startswith("$P$") or hashed_password.startswith("$H$"):
+        return pwd_context.verify(plain_password, hashed_password)
+    
+    # Bcrypt verification
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 def needs_password_rehash(hashed_password: str) -> bool:
     """
-    Check if the hash needs to be upgraded (e.g., it is phpass or an old bcrypt round).
+    Check if the hash needs to be upgraded (e.g., it is a legacy phpass).
     """
-    return pwd_context.needs_update(hashed_password)
+    if hashed_password.startswith("$P$") or hashed_password.startswith("$H$"):
+        return True
+    return False
 
 def create_access_token(
     subject: Union[str, Any], expires_delta: timedelta = None

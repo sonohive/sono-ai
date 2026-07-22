@@ -7,6 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
+        primary: '#8104B5',
         brand: {
           50: '#fdf4fe',
           100: '#fadbfc',
@@ -14,11 +15,11 @@ export default {
           300: '#ef87f4',
           400: '#e547e8',
           500: '#d51bd7',
-          600: '#b111b1',
-          700: '#881f94', // PRIMARY BRAND
-          800: '#75147c',
-          900: '#611566',
-          950: '#400244',
+          600: '#8104B5', // Primary
+          700: '#690396',
+          800: '#520375',
+          900: '#3c0256',
+          950: '#230132',
         }
       },
       animation: {
