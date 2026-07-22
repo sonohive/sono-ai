@@ -1,0 +1,49 @@
+# Environments
+venv/
+env/
+.env
+.venv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Alembic
+alembic.ini
+
+# Markdown files (as requested)
+*.md
+
+# Database
+*.sqlite3
+*.db
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+.gemini/
+
+# OS generated files
+.DS_Store
+Thumbs.db
