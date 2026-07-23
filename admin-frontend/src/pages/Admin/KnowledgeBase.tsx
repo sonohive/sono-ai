@@ -1,104 +1,112 @@
 import React, { useState, useEffect } from 'react';
-import { UploadCloud, FileText, Link as LinkIcon, Server } from 'lucide-react';
+import { FileText, Server, FileImage, Link as LinkIcon, FileCode, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function KnowledgeBase() {
-  const [activeTab, setActiveTab] = useState<'upload' | 'urls' | 'manage'>('upload');
-  const [url, setUrl] = useState('');
-  const [chunksCount, setChunksCount] = useState(0);
+  const navigate = useNavigate();
+  const [stats, setStats] = useState({
+    total_kb_data: 0,
+    total_chunking_data: 0,
+    redis_total_keys: 0,
+    total_images_data: 0
+  });
 
   useEffect(() => {
-    fetch('/api/admin/stats')
-      .then(res => res.ok ? res.json() : { embedded_chunks: 0 })
-      .then(data => setChunksCount(data.embedded_chunks))
+    fetch('/api/admin/knowledge/stats')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) setStats(data);
+      })
       .catch(err => console.error(err));
-  }, [activeTab]);
+  }, []);
 
-  const handleIngestUrl = async () => {
-    if (!url) return;
-    try {
-      await fetch('/api/admin/ingest-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
-      });
-      setUrl('');
-      alert('URL queued for ingestion!');
-    } catch (err) {
-      console.error(err);
+  const statCards = [
+    { title: 'Total KB Data', value: stats.total_kb_data, icon: <FileText className="w-5 h-5 text-blue-400" />, subtitle: 'All ingested training data' },
+    { title: 'Total Chunking Data', value: stats.total_chunking_data, icon: <Server className="w-5 h-5 text-indigo-400" />, subtitle: 'Generated text chunks' },
+    { title: 'Redis Total Keys', value: stats.redis_total_keys, icon: <Server className="w-5 h-5 text-rose-400" />, subtitle: 'Cached vector embeddings' },
+    { title: 'Total Images Data', value: stats.total_images_data, icon: <FileImage className="w-5 h-5 text-emerald-400" />, subtitle: 'Clinical images stored' }
+  ];
+
+  const trainingMediums = [
+    {
+      id: 'pdf',
+      title: 'PDF Upload',
+      description: 'Upload PDF documents to extract and add their content to the knowledge base.',
+      icon: <FileText className="w-8 h-8 text-blue-400" />,
+      path: '/kb/pdf'
+    },
+    {
+      id: 'url',
+      title: 'Website URL',
+      description: 'Crawl any public website URL to extract and add text content to the knowledge base.',
+      icon: <LinkIcon className="w-8 h-8 text-indigo-400" />,
+      path: '/kb/url'
+    },
+    {
+      id: 'text',
+      title: 'Custom Text',
+      description: 'Write or paste any custom text or raw guidelines.',
+      icon: <FileCode className="w-8 h-8 text-purple-400" />,
+      path: '/kb/text'
+    },
+    {
+      id: 'media',
+      title: 'Media',
+      description: 'Upload images with labels and descriptive information about them.',
+      icon: <FileImage className="w-8 h-8 text-emerald-400" />,
+      path: '/kb/media'
     }
-  };
+  ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in pb-12">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Knowledge Base Management</h1>
-        <p className="text-slate-500 mt-1">Ingest new PDFs and URLs to train the AI.</p>
+        <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Knowledge Base</h1>
+        <p className="text-slate-400">Select a medium to train the AI with new medical context.</p>
       </div>
 
-      <div className="glass-panel overflow-hidden">
-        <div className="flex border-b border-slate-200">
-          <button
-            onClick={() => setActiveTab('upload')}
-            className={`px-6 py-4 font-medium text-sm flex items-center gap-2 ${
-              activeTab === 'upload' ? 'border-b-2 border-brand-700 text-brand-700' : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <UploadCloud className="w-4 h-4" /> Upload PDFs
-          </button>
-          <button
-            onClick={() => setActiveTab('urls')}
-            className={`px-6 py-4 font-medium text-sm flex items-center gap-2 ${
-              activeTab === 'urls' ? 'border-b-2 border-brand-700 text-brand-700' : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <LinkIcon className="w-4 h-4" /> Scrape URLs
-          </button>
-          <button
-            onClick={() => setActiveTab('manage')}
-            className={`px-6 py-4 font-medium text-sm flex items-center gap-2 ${
-              activeTab === 'manage' ? 'border-b-2 border-brand-700 text-brand-700' : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <Server className="w-4 h-4" /> Redis Index
-          </button>
-        </div>
-
-        <div className="p-8">
-          {activeTab === 'upload' && (
-            <div className="border-2 border-dashed border-slate-300 rounded-xl p-12 flex flex-col items-center justify-center text-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
-              <div className="w-16 h-16 bg-white shadow-sm rounded-full flex items-center justify-center text-brand-600 mb-4">
-                <FileText className="w-8 h-8" />
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {statCards.map((card, idx) => (
+          <div key={idx} className="bg-[#121214] border border-white/5 rounded-xl p-5 hover:bg-[#18181b] transition-colors flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
+                  {card.icon}
+                </div>
               </div>
-              <h3 className="text-lg font-bold text-slate-700">Click to upload medical PDFs</h3>
-              <p className="text-sm text-slate-500 mt-2 max-w-md">
-                Files will be uploaded to Cloudflare R2, and their text will be embedded into the Redis Vector Store.
+              <div className="text-sm text-slate-500 mb-1">{card.title}</div>
+              <div className="text-2xl font-bold text-white mb-6">{card.value.toLocaleString()}</div>
+            </div>
+            <div className="flex items-center justify-between text-xs pt-4 border-t border-white/5">
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <div className="w-1.5 h-1.5 rounded-full bg-slate-500"></div> {card.subtitle}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Training Mediums */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {trainingMediums.map((medium) => (
+          <div 
+            key={medium.id}
+            onClick={() => navigate(medium.path)}
+            className="bg-[#121214] border border-white/5 rounded-xl p-6 cursor-pointer group hover:bg-[#18181b] hover:border-white/10 transition-all flex items-start gap-5 relative overflow-hidden"
+          >
+            <div className="p-3 bg-white/5 rounded-lg border border-white/5 group-hover:scale-110 transition-transform">
+              {medium.icon}
+            </div>
+            <div className="flex-1 pr-8">
+              <h3 className="text-lg font-bold text-white mb-2">{medium.title}</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                {medium.description}
               </p>
             </div>
-          )}
-
-          {activeTab === 'urls' && (
-            <div className="space-y-4 max-w-lg">
-              <label className="block text-sm font-medium text-slate-700">Enter URL to scrape</label>
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://example.com/medical-guideline"
-                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
-                />
-                <button onClick={handleIngestUrl} className="btn-primary">Ingest</button>
-              </div>
-            </div>
-          )}
-          
-          {activeTab === 'manage' && (
-            <div className="text-slate-600">
-               <p>Vector database currently contains <strong className="text-brand-700 text-lg">{chunksCount}</strong> embedded chunks.</p>
-               <button className="mt-4 px-4 py-2 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg text-sm font-medium transition-colors">Clear Index</button>
-            </div>
-          )}
-        </div>
+            <ArrowRight className="w-5 h-5 text-slate-600 absolute top-6 right-6 group-hover:text-white group-hover:translate-x-1 transition-all" />
+          </div>
+        ))}
       </div>
     </div>
   );

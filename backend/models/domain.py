@@ -17,9 +17,13 @@ class KnowledgeBaseMetadata(Base):
     __tablename__ = "kb_metadata"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    title = Column(String, nullable=False)
-    source_url = Column(String, nullable=False) # S3 URL or external URL
+    training_type = Column(String, nullable=False) # 'pdf', 'url', 'text', 'media'
+    mode = Column(String, nullable=False) # 'guideline' or 'research'
     topic_id = Column(UUID(as_uuid=True), ForeignKey("topics.id"), nullable=True)
+    country = Column(String, nullable=True) # e.g. UK, USA
+    source_name = Column(String, nullable=False) # e.g. Fetal Care Protocol
+    source_url = Column(String, nullable=True) # Reference link
+    content_url = Column(String, nullable=True) # Raw file/image URL in R2 if applicable
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class QueryLog(Base):

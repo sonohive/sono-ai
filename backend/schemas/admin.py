@@ -42,3 +42,42 @@ class PaginatedUserResponse(BaseModel):
 
 class UserStatusUpdate(BaseModel):
     is_active: bool
+
+class KBStatsResponse(BaseModel):
+    total_kb_data: int
+    total_chunking_data: int
+    redis_total_keys: int
+    total_images_data: int
+
+class KBItemResponse(BaseModel):
+    id: str
+    training_type: str
+    mode: str
+    topic_id: str | None = None
+    country: str | None = None
+    source_name: str
+    source_url: str | None = None
+    content_url: str | None = None
+    created_at: str
+
+class PaginatedKBResponse(BaseModel):
+    items: List[KBItemResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+class TextIngestRequest(BaseModel):
+    training_mode: str
+    topic_id: str | None = None
+    country: str | None = None
+    source_name: str
+    source_url: str | None = None
+    content: str
+
+class URLIngestRequest(BaseModel):
+    training_mode: str
+    topic_id: str | None = None
+    country: str | None = None
+    source_name: str
+    source_url: str

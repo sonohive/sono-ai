@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func
+from sqlalchemy import func, desc
 from pydantic import BaseModel
 
 from db.session import get_db
@@ -9,50 +9,191 @@ from models.user import User
 from models.domain import KnowledgeBaseMetadata, ChatSession, QueryLog, QueryFeedback, RLHFReview
 from api.deps import get_current_user
 from datetime import datetime, timedelta
-from schemas.admin import OverviewStatsResponse, TrendDataResponse, TrendPoint, ChallengeDataResponse
+from schemas.admin import (
+    OverviewStatsResponse, TrendDataResponse, TrendPoint, ChallengeDataResponse,
+    KBStatsResponse, PaginatedKBResponse, KBItemResponse, TextIngestRequest, URLIngestRequest
+)
 from api.deps import require_permission
 from models.admin import Admin
+from typing import Optional
+import uuid
 
 router = APIRouter()
 
-class URLIngestRequest(BaseModel):
-    url: str
+@router.post("/knowledge/ingest/pdf")
+async def ingest_pdf(
+    file: UploadFile = File(...),
+    training_mode: str = Form(...),
+    topic_id: Optional[str] = Form(None),
+    country: Optional[str] = Form(None),
+    source_name: str = Form(...),
+    source_url: Optional[str] = Form(None),
+    current_admin: Admin = Depends(require_permission("manage_kb")),
+    db: AsyncSession = Depends(get_db)
+):
+    # Process PDF here...
+    
+    new_kb = KnowledgeBaseMetadata(
+        training_type="pdf",
+        mode=training_mode,
+        topic_id=uuid.UUID(topic_id) if topic_id else None,
+        country=country,
+        source_name=source_name,
+        source_url=source_url,
+        content_url=None
+    )
+    db.add(new_kb)
+    await db.commit()
+    return {"message": f"Successfully ingested PDF {file.filename}"}
 
-@router.get("/stats")
+@router.post("/knowledge/ingest/media")
+async def ingest_media(
+    file: UploadFile = File(...),
+    training_mode: str = Form(...),
+    topic_id: Optional[str] = Form(None),
+    country: Optional[str] = Form(None),
+    source_name: str = Form(...),
+    source_url: Optional[str] = Form(None),
+    current_admin: Admin = Depends(require_permission("manage_kb")),
+    db: AsyncSession = Depends(get_db)
+):
+    # Upload to R2 logic here...
+    r2_url = f"https://r2.example.com/{file.filename}"
+    
+    new_kb = KnowledgeBaseMetadata(
+        training_type="media",
+        mode=training_mode,
+        topic_id=uuid.UUID(topic_id) if topic_id else None,
+        country=country,
+        source_name=source_name,
+        source_url=source_url,
+        content_url=r2_url
+    )
+    db.add(new_kb)
+    await db.commit()
+    return {"message": f"Successfully ingested media {file.filename}"}
+
+@router.get("/knowledge/stats", response_model=KBStatsResponse)
 async def get_kb_stats(
     current_admin: Admin = Depends(require_permission("manage_kb")),
     db: AsyncSession = Depends(get_db)
 ):
-    
     # In a real implementation, we would query Redis for the exact vector count.
     # Here we count the metadata records as a proxy for uploaded documents.
     doc_count = await db.execute(select(func.count(KnowledgeBaseMetadata.id)))
     total_docs = doc_count.scalar_one()
     
-    return {
-        "embedded_chunks": total_docs * 15 # Placeholder multiplier for chunks per doc
-    }
+    img_count = await db.execute(select(func.count(KnowledgeBaseMetadata.id)).where(KnowledgeBaseMetadata.training_type == 'media'))
+    total_images = img_count.scalar_one()
 
-@router.post("/ingest-url")
+    return KBStatsResponse(
+        total_kb_data=total_docs,
+        total_chunking_data=total_docs * 15, # Placeholder multiplier for chunks per doc
+        redis_total_keys=total_docs * 15, # Placeholder
+        total_images_data=total_images
+    )
+
+@router.get("/knowledge", response_model=PaginatedKBResponse)
+async def get_kb_items(
+    training_type: str,
+    page: int = 1,
+    size: int = 10,
+    topic_id: Optional[str] = None,
+    country: Optional[str] = None,
+    current_admin: Admin = Depends(require_permission("manage_kb")),
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(KnowledgeBaseMetadata).where(KnowledgeBaseMetadata.training_type == training_type).order_by(desc(KnowledgeBaseMetadata.created_at))
+
+    if topic_id:
+        query = query.where(KnowledgeBaseMetadata.topic_id == topic_id)
+    if country:
+        query = query.where(KnowledgeBaseMetadata.country.ilike(f"%{country}%"))
+
+    # Count total
+    count_query = select(func.count()).select_from(query.subquery())
+    total_res = await db.execute(count_query)
+    total = total_res.scalar_one()
+
+    # Paginate
+    query = query.offset((page - 1) * size).limit(size)
+    result = await db.execute(query)
+    rows = result.scalars().all()
+
+    items = []
+    for kb in rows:
+        items.append(KBItemResponse(
+            id=str(kb.id),
+            training_type=kb.training_type,
+            mode=kb.mode,
+            topic_id=str(kb.topic_id) if kb.topic_id else None,
+            country=kb.country,
+            source_name=kb.source_name,
+            source_url=kb.source_url,
+            content_url=kb.content_url,
+            created_at=kb.created_at.isoformat()
+        ))
+
+    import math
+    pages = math.ceil(total / size) if size > 0 else 0
+
+    return PaginatedKBResponse(
+        items=items,
+        total=total,
+        page=page,
+        size=size,
+        pages=pages
+    )
+
+@router.post("/knowledge/ingest/url")
 async def ingest_url(
     request: URLIngestRequest,
     background_tasks: BackgroundTasks,
     current_admin: Admin = Depends(require_permission("manage_kb")),
     db: AsyncSession = Depends(get_db)
 ):
-    
-    # In a real implementation, trigger DocumentParser in background
-    # background_tasks.add_task(DocumentParser.parse_url, request.url)
-    
     # Record metadata
     new_kb = KnowledgeBaseMetadata(
-        title=f"Ingested from {request.url}",
-        source_url=request.url
+        training_type="url",
+        mode=request.training_mode,
+        topic_id=request.topic_id,
+        country=request.country,
+        source_name=request.source_name,
+        source_url=request.source_url
     )
     db.add(new_kb)
     await db.commit()
     
-    return {"message": f"Successfully queued {request.url} for ingestion"}
+    return {"message": f"Successfully queued {request.source_url} for ingestion"}
+
+from services.ingestion import process_and_embed_text
+
+@router.post("/knowledge/ingest/text")
+async def ingest_text(
+    request: TextIngestRequest,
+    background_tasks: BackgroundTasks,
+    current_admin: Admin = Depends(require_permission("manage_kb")),
+    db: AsyncSession = Depends(get_db)
+):
+    # Record metadata
+    new_kb = KnowledgeBaseMetadata(
+        training_type="text",
+        mode=request.training_mode,
+        topic_id=uuid.UUID(request.topic_id) if request.topic_id else None,
+        country=request.country,
+        source_name=request.source_name,
+        source_url=request.source_url
+    )
+    db.add(new_kb)
+    await db.flush() # Flush to get the ID without committing yet
+    
+    # Process text and create embeddings
+    chunks_processed = await process_and_embed_text(new_kb.id, request.content, db)
+    
+    # Commit the transaction (Metadata + Embeddings)
+    await db.commit()
+    
+    return {"message": f"Successfully ingested text and created {chunks_processed} chunks"}
 
 from api.deps import require_permission
 from models.admin import Admin
