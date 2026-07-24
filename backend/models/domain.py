@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -24,7 +24,10 @@ class KnowledgeBaseMetadata(Base):
     source_name = Column(String, nullable=False) # e.g. Fetal Care Protocol
     source_url = Column(String, nullable=True) # Reference link
     content_url = Column(String, nullable=True) # Raw file/image URL in R2 if applicable
+    label = Column(String, nullable=True) # Short tag for media (e.g. Ultrasound)
+    description = Column(Text, nullable=True) # Longer description for embedding
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 class QueryLog(Base):
     __tablename__ = "query_logs"
@@ -34,6 +37,7 @@ class QueryLog(Base):
     session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False)
     query = Column(Text, nullable=False)
     response = Column(Text, nullable=False)
+    is_unanswered = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class SavedResponse(Base):
@@ -80,5 +84,12 @@ class RLHFReview(Base):
     query_id = Column(UUID(as_uuid=True), ForeignKey("query_logs.id", ondelete="CASCADE"), nullable=False)
     status = Column(String, nullable=False, default="pending") # "pending", "reviewed", "ignored"
     flag_reason = Column(String, nullable=True)
+    
+    # SFT Additions
+    retrained_data = Column(Text, nullable=True)
+    grading_tags = Column(JSON, nullable=True) # e.g. ["Hallucination", "Tone"]
+    sft_reviewer_id = Column(UUID(as_uuid=True), ForeignKey("sft_reviewers.id"), nullable=True)
+    admin_id = Column(UUID(as_uuid=True), ForeignKey("admins.id"), nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

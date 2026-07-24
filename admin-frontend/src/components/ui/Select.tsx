@@ -1,18 +1,27 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-interface SelectOption {
-  value: string;
+export interface SelectOption {
+  value: string | number;
   label: string;
 }
 
 interface SelectProps {
-  value: string;
-  onChange: (value: string) => void;
+  value: string | number;
+  onChange: (value: string | number) => void;
   options: SelectOption[];
   placeholder?: string;
+  icon?: React.ReactNode;
+  className?: string;
 }
 
-export function Select({ value, onChange, options, placeholder = "Select an option" }: SelectProps) {
+export function Select({ 
+  value, 
+  onChange, 
+  options, 
+  placeholder = "Select an option",
+  icon,
+  className = "w-48"
+}: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -31,22 +40,25 @@ export function Select({ value, onChange, options, placeholder = "Select an opti
   const selectedOption = options.find(opt => opt.value === value);
 
   return (
-    <div className="relative font-sans" ref={containerRef}>
+    <div className={`relative font-sans ${className}`} ref={containerRef}>
       <button 
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-between w-full bg-[#09090b] border border-white/10 hover:border-white/20 text-white text-sm rounded-lg focus:ring-1 focus:ring-primary/50 focus:border-primary/50 focus:outline-none px-4 py-2.5 transition-all cursor-pointer"
       >
-        <span className={!selectedOption ? "text-slate-500" : ""}>
-          {selectedOption ? selectedOption.label : placeholder}
-        </span>
+        <div className="flex items-center gap-2">
+          {icon && <span className="shrink-0">{icon}</span>}
+          <span className={!selectedOption ? "text-slate-500" : ""}>
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
         <svg className="w-4 h-4 text-slate-400 ml-2 shrink-0" fill="none" viewBox="0 0 20 20" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 8l4 4 4-4" />
         </svg>
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-[#09090b] border border-white/10 rounded-lg shadow-lg overflow-hidden py-1">
+        <div className="absolute z-50 w-full mt-1 bg-[#09090b] border border-white/10 rounded-lg shadow-lg overflow-hidden py-1 right-0">
           {options.map((opt) => (
             <div 
               key={opt.value}

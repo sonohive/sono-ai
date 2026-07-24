@@ -2,20 +2,35 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Server, FileImage, Link as LinkIcon, FileCode, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+import api from '../../api';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { StatCard } from '../../components/ui/StatCard';
+
 export default function KnowledgeBase() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     total_kb_data: 0,
     total_chunking_data: 0,
     redis_total_keys: 0,
-    total_images_data: 0
+    total_images_data: 0,
+    total_text: 0,
+    text_guideline: 0,
+    text_research: 0,
+    total_url: 0,
+    url_guideline: 0,
+    url_research: 0,
+    total_pdf: 0,
+    pdf_guideline: 0,
+    pdf_research: 0,
+    total_media: 0,
+    media_guideline: 0,
+    media_research: 0
   });
 
   useEffect(() => {
-    fetch('/api/admin/knowledge/stats')
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data) setStats(data);
+    api.get('/admin/knowledge/stats')
+      .then(res => {
+        if (res.data) setStats(res.data);
       })
       .catch(err => console.error(err));
   }, []);
@@ -24,7 +39,15 @@ export default function KnowledgeBase() {
     { title: 'Total KB Data', value: stats.total_kb_data, icon: <FileText className="w-5 h-5 text-blue-400" />, subtitle: 'All ingested training data' },
     { title: 'Total Chunking Data', value: stats.total_chunking_data, icon: <Server className="w-5 h-5 text-indigo-400" />, subtitle: 'Generated text chunks' },
     { title: 'Redis Total Keys', value: stats.redis_total_keys, icon: <Server className="w-5 h-5 text-rose-400" />, subtitle: 'Cached vector embeddings' },
-    { title: 'Total Images Data', value: stats.total_images_data, icon: <FileImage className="w-5 h-5 text-emerald-400" />, subtitle: 'Clinical images stored' }
+    { title: 'Total Images Data', value: stats.total_images_data, icon: <FileImage className="w-5 h-5 text-emerald-400" />, subtitle: 'Clinical images stored' },
+    { title: 'Custom Text - Guideline', value: stats.text_guideline, icon: <FileCode className="w-5 h-5 text-purple-400" />, subtitle: 'Ingested guidelines' },
+    { title: 'Custom Text - Research', value: stats.text_research, icon: <FileCode className="w-5 h-5 text-purple-300" />, subtitle: 'Ingested research text' },
+    { title: 'URL - Guideline', value: stats.url_guideline, icon: <LinkIcon className="w-5 h-5 text-cyan-400" />, subtitle: 'Scraped guideline URLs' },
+    { title: 'URL - Research', value: stats.url_research, icon: <LinkIcon className="w-5 h-5 text-cyan-300" />, subtitle: 'Scraped research URLs' },
+    { title: 'PDF - Guideline', value: stats.pdf_guideline, icon: <FileText className="w-5 h-5 text-orange-400" />, subtitle: 'Parsed guideline PDFs' },
+    { title: 'PDF - Research', value: stats.pdf_research, icon: <FileText className="w-5 h-5 text-orange-300" />, subtitle: 'Parsed research PDFs' },
+    { title: 'Media - Guideline', value: stats.media_guideline, icon: <FileImage className="w-5 h-5 text-emerald-400" />, subtitle: 'Clinical images (Guideline)' },
+    { title: 'Media - Research', value: stats.media_research, icon: <FileImage className="w-5 h-5 text-emerald-300" />, subtitle: 'Clinical images (Research)' }
   ];
 
   const trainingMediums = [
@@ -60,31 +83,30 @@ export default function KnowledgeBase() {
 
   return (
     <div className="space-y-8 animate-fade-in pb-12">
-      <div>
-        <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Knowledge Base</h1>
-        <p className="text-slate-400">Select a medium to train the AI with new medical context.</p>
-      </div>
+      <PageHeader 
+        title="Knowledge Base" 
+        description="Select a medium to train the AI with new medical context."
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {statCards.map((card, idx) => (
-          <div key={idx} className="bg-[#121214] border border-white/5 rounded-xl p-5 hover:bg-[#18181b] transition-colors flex flex-col justify-between">
-            <div>
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
-                  {card.icon}
-                </div>
-              </div>
-              <div className="text-sm text-slate-500 mb-1">{card.title}</div>
-              <div className="text-2xl font-bold text-white mb-6">{card.value.toLocaleString()}</div>
-            </div>
-            <div className="flex items-center justify-between text-xs pt-4 border-t border-white/5">
-              <div className="flex items-center gap-1.5 text-slate-400">
-                <div className="w-1.5 h-1.5 rounded-full bg-slate-500"></div> {card.subtitle}
-              </div>
-            </div>
-          </div>
-        ))}
+        {statCards.map((card, idx) => {
+          // Extract the color class from the icon to use for the dot
+          const iconElement = card.icon as React.ReactElement;
+          const colorMatch = iconElement.props.className?.match(/text-(\w+-\d+)/);
+          const dotClass = colorMatch ? `bg-${colorMatch[1]}` : 'bg-slate-500';
+          
+          return (
+            <StatCard
+              key={idx}
+              title={card.title}
+              value={card.value.toLocaleString()}
+              icon={card.icon}
+              footerText={card.subtitle}
+              footerDotClass={dotClass}
+            />
+          );
+        })}
       </div>
 
       {/* Training Mediums */}

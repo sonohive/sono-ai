@@ -29,11 +29,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const checkAuth = async () => {
       if (token) {
         try {
+          // First try Admin
           const response = await api.get('/admin/auth/me');
           setAdmin(response.data);
         } catch (error) {
-          console.error("Auth check failed:", error);
-          logout();
+          // Fallback to SFT Reviewer
+          try {
+            const sftResponse = await api.get('/sft/auth/me');
+            setAdmin(sftResponse.data);
+          } catch (err) {
+            console.error("Auth check failed:", err);
+            logout();
+          }
         }
       }
       setIsLoading(false);

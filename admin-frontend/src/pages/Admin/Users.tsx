@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Users as UsersIcon, Search, MoreVertical, Trash2, Ban, CheckCircle, Shield, Download, Activity, FileText } from 'lucide-react';
 import api from '../../api';
 import { useAuth } from '../../contexts/AuthContext';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { StatCard } from '../../components/ui/StatCard';
+import { Select } from '../../components/ui/Select';
+import { CardContainer } from '../../components/ui/CardContainer';
 
 interface User {
   id: string;
@@ -104,11 +108,10 @@ export default function Users() {
 
   return (
     <div className="space-y-8 animate-fade-in pb-12">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Users</h1>
-          <p className="text-slate-400">Manage registered users, their roles, and access.</p>
-        </div>
+      <PageHeader 
+        title="Users" 
+        description="Manage registered users, their roles, and access."
+      >
         <button 
           onClick={exportCSV}
           disabled={isExporting}
@@ -117,69 +120,38 @@ export default function Users() {
           {isExporting ? <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div> : <Download className="w-4 h-4" />}
           {isExporting ? 'Exporting...' : 'Export to CSV'}
         </button>
-      </div>
+      </PageHeader>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-[#121214] border border-white/5 rounded-xl p-5 hover:bg-[#18181b] transition-colors flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
-                <UsersIcon className="w-5 h-5 text-blue-400" />
-              </div>
-            </div>
-            <div className="text-sm text-slate-500 mb-1">Total Users</div>
-            <div className="text-2xl font-bold text-white mb-6">{stats ? stats.total_users.toLocaleString() : '-'}</div>
-          </div>
-          <div className="flex items-center justify-between text-xs pt-4 border-t border-white/5">
-             <div className="flex items-center gap-1.5 text-slate-400"><div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div> All Registered Accounts</div>
-          </div>
-        </div>
-        
-        <div className="bg-[#121214] border border-white/5 rounded-xl p-5 hover:bg-[#18181b] transition-colors flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-emerald-400" />
-              </div>
-            </div>
-            <div className="text-sm text-slate-500 mb-1">Active Users (28d)</div>
-            <div className="text-2xl font-bold text-white mb-6">{stats ? stats.active_users_28d.toLocaleString() : '-'}</div>
-          </div>
-          <div className="flex items-center justify-between text-xs pt-4 border-t border-white/5">
-             <div className="flex items-center gap-1.5 text-slate-400"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div> Used platform recently</div>
-          </div>
-        </div>
-
-        <div className="bg-[#121214] border border-white/5 rounded-xl p-5 hover:bg-[#18181b] transition-colors flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
-                <Ban className="w-5 h-5 text-rose-400" />
-              </div>
-            </div>
-            <div className="text-sm text-slate-500 mb-1">Suspended Users</div>
-            <div className="text-2xl font-bold text-white mb-6">{stats ? stats.suspended_users.toLocaleString() : '-'}</div>
-          </div>
-          <div className="flex items-center justify-between text-xs pt-4 border-t border-white/5">
-             <div className="flex items-center gap-1.5 text-slate-400"><div className="w-1.5 h-1.5 rounded-full bg-rose-400"></div> Access Revoked</div>
-          </div>
-        </div>
-
-        <div className="bg-[#121214] border border-white/5 rounded-xl p-5 hover:bg-[#18181b] transition-colors flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-slate-500" />
-              </div>
-            </div>
-            <div className="text-sm text-slate-500 mb-1">Active Subscription</div>
-            <div className="text-2xl font-bold text-slate-400 mb-6">Null</div>
-          </div>
-          <div className="flex items-center justify-between text-xs pt-4 border-t border-white/5">
-             <div className="flex items-center gap-1.5 text-slate-500"><div className="w-1.5 h-1.5 rounded-full bg-slate-500"></div> Feature not yet available</div>
-          </div>
-        </div>
+        <StatCard
+          title="Total Users"
+          value={stats ? stats.total_users.toLocaleString() : '-'}
+          icon={<UsersIcon className="w-5 h-5 text-blue-400" />}
+          footerText="All Registered Accounts"
+          footerDotClass="bg-blue-400"
+        />
+        <StatCard
+          title="Active Users (28d)"
+          value={stats ? stats.active_users_28d.toLocaleString() : '-'}
+          icon={<CheckCircle className="w-5 h-5 text-emerald-400" />}
+          footerText="Used platform recently"
+          footerDotClass="bg-emerald-400"
+        />
+        <StatCard
+          title="Suspended Users"
+          value={stats ? stats.suspended_users.toLocaleString() : '-'}
+          icon={<Ban className="w-5 h-5 text-rose-400" />}
+          footerText="Access Revoked"
+          footerDotClass="bg-rose-400"
+        />
+        <StatCard
+          title="Active Subscription"
+          value="Null"
+          icon={<FileText className="w-5 h-5 text-slate-500" />}
+          footerText="Feature not yet available"
+          footerDotClass="bg-slate-500"
+        />
       </div>
 
       {/* Filters and Actions */}
@@ -195,53 +167,20 @@ export default function Users() {
           />
         </div>
         
-        <div className="relative">
-          <button 
-            type="button"
-            onClick={() => {
-              const el = document.getElementById('status-dropdown-menu');
-              if (el) el.classList.toggle('hidden');
-            }}
-            onBlur={(e) => {
-              // Timeout to allow click on option to fire first
-              setTimeout(() => {
-                const el = document.getElementById('status-dropdown-menu');
-                if (el) el.classList.add('hidden');
-              }, 150);
-            }}
-            className="flex items-center justify-between w-40 bg-[#09090b] border border-white/10 hover:border-white/20 text-slate-300 text-sm rounded-lg focus:ring-1 focus:ring-primary/50 focus:border-primary/50 focus:outline-none px-4 py-2.5 transition-all cursor-pointer font-sans"
-          >
-            {statusFilter === 'all' ? 'All Statuses' : statusFilter === 'active' ? 'Active Only' : 'Suspended Only'}
-            <svg className="w-4 h-4 text-slate-400 ml-2" fill="none" viewBox="0 0 20 20" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 8l4 4 4-4" />
-            </svg>
-          </button>
-
-          <div id="status-dropdown-menu" className="absolute z-10 w-full mt-1 bg-[#09090b] border border-white/10 rounded-lg shadow-lg hidden overflow-hidden font-sans">
-            <div 
-              className={`px-4 py-2.5 text-sm cursor-pointer hover:bg-white/5 transition-colors ${statusFilter === 'all' ? 'text-white bg-white/5 font-medium' : 'text-slate-400'}`}
-              onClick={() => { setStatusFilter('all'); setPage(1); }}
-            >
-              All Statuses
-            </div>
-            <div 
-              className={`px-4 py-2.5 text-sm cursor-pointer hover:bg-white/5 transition-colors ${statusFilter === 'active' ? 'text-white bg-white/5 font-medium' : 'text-slate-400'}`}
-              onClick={() => { setStatusFilter('active'); setPage(1); }}
-            >
-              Active Only
-            </div>
-            <div 
-              className={`px-4 py-2.5 text-sm cursor-pointer hover:bg-white/5 transition-colors ${statusFilter === 'suspended' ? 'text-white bg-white/5 font-medium' : 'text-slate-400'}`}
-              onClick={() => { setStatusFilter('suspended'); setPage(1); }}
-            >
-              Suspended Only
-            </div>
-          </div>
-        </div>
+        <Select 
+          value={statusFilter}
+          onChange={(val) => { setStatusFilter(val as string); setPage(1); }}
+          options={[
+            { value: 'all', label: 'All Statuses' },
+            { value: 'active', label: 'Active Only' },
+            { value: 'suspended', label: 'Suspended Only' }
+          ]}
+          className="w-48"
+        />
       </div>
 
       {/* Users Table */}
-      <div className="bg-[#18181b] rounded-xl border border-white/5 overflow-hidden">
+      <CardContainer noPadding>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-xs text-slate-400 uppercase bg-black/20 border-b border-white/5">
@@ -357,7 +296,7 @@ export default function Users() {
             </button>
           </div>
         </div>
-      </div>
+      </CardContainer>
     </div>
   );
 }

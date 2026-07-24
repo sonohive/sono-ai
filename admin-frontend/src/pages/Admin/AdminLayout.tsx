@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Database, Settings, ShieldCheck, CheckSquare, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Database, Settings, ShieldCheck, CheckSquare, Search, ChevronLeft, ChevronRight, Tag, MessageSquare } from 'lucide-react';
 
 export default function AdminLayout() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -8,8 +8,11 @@ export default function AdminLayout() {
   const navItems = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
     { to: '/users', label: 'Users', icon: ShieldCheck },
-    { to: '/rlhf', label: 'RLHF QA', icon: CheckSquare },
+    { to: '/feedback', label: 'Feedback', icon: MessageSquare },
+    { to: '/query-logs', label: 'Query Logs', icon: Search },
+    { to: '/sft/dashboard', label: 'RLHF QA', icon: CheckSquare },
     { to: '/kb', label: 'Knowledge Base', icon: Database },
+    { to: '/topics', label: 'Topics', icon: Tag },
     { to: '/settings', label: 'Settings', icon: Settings },
   ];
 

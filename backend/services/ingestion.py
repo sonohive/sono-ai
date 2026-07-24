@@ -2,8 +2,9 @@ import uuid
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete
 from models.domain import KnowledgeBaseEmbedding
-from db.redis_client import store_in_redis
+from db.redis_client import store_in_redis, delete_from_redis_by_prefix
 from core.config import settings
 import logging
 
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Initialize OpenAI Embeddings (text-embedding-3-large is 3072 dimensions)
 embeddings = OpenAIEmbeddings(
     model=settings.EMBEDDING_MODEL,
-    api_key=settings.OPENAI_API_KEY
+    openai_api_key=settings.OPENAI_API_KEY
 )
 
 # Initialize Text Splitter for chunking
@@ -60,3 +61,16 @@ async def process_and_embed_text(kb_metadata_id: uuid.UUID, text: str, db: Async
     await db.commit()
     logger.info(f"Successfully processed {len(chunks)} chunks for KB ID {kb_metadata_id}")
     return len(chunks)
+
+async def delete_knowledge_chunks(kb_metadata_id: uuid.UUID, db: AsyncSession):
+    """
+    Deletes all chunks related to a KB ID from PostgreSQL and Redis.
+    """
+    logger.info(f"Deleting chunks for KB ID {kb_metadata_id} from Postgres...")
+    await db.execute(delete(KnowledgeBaseEmbedding).where(KnowledgeBaseEmbedding.knowledge_id == kb_metadata_id))
+    
+    logger.info(f"Deleting chunks for KB ID {kb_metadata_id} from Redis...")
+    await delete_from_redis_by_prefix(f"kb:{kb_metadata_id}:")
+    
+    await db.commit()
+    logger.info(f"Successfully deleted chunks for KB ID {kb_metadata_id}")

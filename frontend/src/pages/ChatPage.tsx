@@ -7,6 +7,8 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  query_id?: string;
+  feedback_status?: 'liked' | 'disliked' | null;
 }
 
 export default function ChatPage() {
@@ -73,6 +75,40 @@ export default function ChatPage() {
     }
   };
 
+  const handleFeedback = async (messageId: string, queryId: string, isLiked: boolean) => {
+    // Prompt for optional feedback text if disliked
+    let feedbackText = null;
+    if (!isLiked) {
+      feedbackText = prompt("Would you like to provide any feedback on why this response wasn't helpful? (Optional)") || null;
+    } else {
+      feedbackText = prompt("What did you like about this response? (Optional)") || null;
+    }
+
+    try {
+      const res = await fetch('/api/chat/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query_id: queryId,
+          is_liked: isLiked,
+          feedback_text: feedbackText
+        })
+      });
+      
+      if (res.ok) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, feedback_status: isLiked ? 'liked' : 'disliked' } 
+            : msg
+        ));
+        setToastMessage("Thank you for your feedback!");
+        setTimeout(() => setToastMessage(null), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to submit feedback', err);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -133,24 +169,43 @@ export default function ChatPage() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
 
+      let buffer = '';
+      let currentEvent = 'message';
+      
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep the last incomplete line in buffer
+
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith('data: ')) {
             const data = line.slice(6);
             if (data === '[DONE]') break;
             
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessageId
-                  ? { ...msg, content: msg.content + data }
-                  : msg
-              )
-            );
+            if (currentEvent === 'query_id') {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMessageId
+                    ? { ...msg, query_id: data }
+                    : msg
+                )
+              );
+            } else if (currentEvent === 'message') {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMessageId
+                    ? { ...msg, content: msg.content + data }
+                    : msg
+                )
+              );
+            }
+          } else if (line.trim() === '') {
+            currentEvent = 'message'; // Reset on empty line separating events
           }
         }
       }
@@ -226,6 +281,31 @@ export default function ChatPage() {
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                           <span>Save</span>
                         </button>
+                        {/* Feedback Icons */}
+                        {message.query_id && (
+                          <>
+                            <button 
+                              className={`sonoai-action-btn`}
+                              style={message.feedback_status === 'liked' ? { color: '#4ade80', borderColor: '#4ade80' } : {}}
+                              title="Good response"
+                              onClick={() => handleFeedback(message.id, message.query_id!, true)}
+                              disabled={message.feedback_status !== undefined}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+                              <span>Good</span>
+                            </button>
+                            <button 
+                              className={`sonoai-action-btn`}
+                              style={message.feedback_status === 'disliked' ? { color: '#f87171', borderColor: '#f87171' } : {}}
+                              title="Bad response"
+                              onClick={() => handleFeedback(message.id, message.query_id!, false)}
+                              disabled={message.feedback_status !== undefined}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>
+                              <span>Bad</span>
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

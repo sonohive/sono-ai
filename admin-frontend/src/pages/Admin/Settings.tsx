@@ -1,19 +1,19 @@
 import React from 'react';
 import { Save } from 'lucide-react';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { CardContainer } from '../../components/ui/CardContainer';
 
 export default function Settings() {
   const inputClass = "w-full bg-[#09090b] border border-white/10 hover:border-white/20 rounded-lg text-sm text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-slate-500 font-sans px-4 py-2.5";
 
   return (
     <div className="space-y-8 animate-fade-in pb-12">
-      <div>
-        <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">System Configuration</h1>
-        <p className="text-slate-400">
-          Manage system-wide variables, API keys, and RAG thresholds. These settings affect the entire Sono AI infrastructure.
-        </p>
-      </div>
+      <PageHeader 
+        title="System Configuration" 
+        description="Manage system-wide variables, API keys, and RAG thresholds. These settings affect the entire Sono AI infrastructure."
+      />
 
-      <div className="bg-[#121214] border border-white/5 rounded-xl overflow-hidden">
+      <CardContainer noPadding>
         <div className="p-6 border-b border-white/5 bg-black/20">
           <h2 className="text-lg font-semibold text-white">Retrieval-Augmented Generation (RAG)</h2>
           <p className="text-sm text-slate-400 mt-1">Configure how the AI searches and retrieves knowledge base context.</p>
@@ -50,7 +50,7 @@ export default function Settings() {
             Save Configuration
           </button>
         </div>
-      </div>
+      </CardContainer>
     </div>
   );
 }
